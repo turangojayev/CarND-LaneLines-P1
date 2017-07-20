@@ -51,20 +51,12 @@ def weighted_img(img, initial_img, alpha=0.8, beta=1., lambdda=0.):
     return cv2.addWeighted(initial_img, alpha, img, beta, lambdda)
 
 
-def plot(images, title, columns=2, cmap=None):
-    rows = (len(images) + 1) // columns
-    subplot = partial(plt.subplot, rows, columns)
-    plt.figure(figsize=(10, 20))
-    plt.suptitle(title)
-
-    for i, image in enumerate(images, 1):
-        subplot(i)
-        plt.imshow(image, cmap='gray' if len(image.shape) == 2 else cmap)
-
-    plt.show()
-
-
 def convert_if_needed(image):
+    """
+    Convenience function for testing on png files (read as float matrices)
+    :param image:
+    :return: image converted to uint8
+    """
     if image.dtype == np.float32:
         image = np.uint8(image * 255)
     return image
@@ -92,6 +84,9 @@ def adjust_vertices(img):
 
 class MeanWithQueue:
     def __init__(self):
+        """
+        Keep record of last 10 element couples
+        """
         self._left = deque(maxlen=10)
         self._right = deque(maxlen=10)
 
@@ -126,19 +121,21 @@ class Pipeline:
                  left_point=None,
                  right_point=None):
         """
-        :update_weight: weight for the new slope in the mean slope update rule over frames
-        :kernel_size: kernel size for Gaussian blur
-        :low_threshold: low intensity threshold for Canny edge detection
-        :high_threshold: high intensity threshold for Canny edge detection
-        :rho: distance resolution of the accumulator in pixels
-        :theta: angle resolution of the accumulator in radians
-        :min_num_of_crossing_sinusoids: min number of sine curves required to cross at a point in Hough space
-        :min_line_len: min length required for the line to be considered
-        :max_line_gap: max allowed gap between parts of line for Hough transformation
-        :thickness: integer indicating thickness of the line to be drawn
-        :slope_updater: callable that takes two arguments and returns a tuple
-        :left_point: callable that takes two arguments and returns a tuple
-        :right_point: callable that takes two arguments and returns a tuple
+        Basic class that implements the pipeline of detecting the lane lines.
+
+        :param update_weight: weight for the new slope in the mean slope update rule over frames
+        :param kernel_size: kernel size for Gaussian blur
+        :param low_threshold: low intensity threshold for Canny edge detection
+        :param high_threshold: high intensity threshold for Canny edge detection
+        :param rho: distance resolution of the accumulator in pixels
+        :param theta: angle resolution of the accumulator in radians
+        :param min_num_of_crossing_sinusoids: min number of sine curves required to cross at a point in Hough space
+        :param min_line_len: min length required for the line to be considered
+        :param max_line_gap: max allowed gap between parts of line for Hough transformation
+        :param thickness: integer indicating thickness of the line to be drawn
+        :param slope_updater: callable that takes two arguments and returns a tuple
+        :param left_point: callable that takes two arguments and returns a tuple
+        :param right_point: callable that takes two arguments and returns a tuple
         """
         self._kernel_size = kernel_size
         self._low_threshold = low_threshold
@@ -154,6 +151,20 @@ class Pipeline:
         self._right_point = right_point if right_point is not None else MeanWithQueue()
 
     def __call__(self, image):
+        """
+        Once a pipeline object created, it can be called with an image as an argument and the following will be performed
+        on it:
+        convert from RGB -> HLS,
+        mask yellow and white lines,
+        convert from HLS -> Grayscale
+        apply Gaussian blur
+        apply Canny edge detection
+        mask a region of interest
+        apply Hough transformation and find lines
+        draw lines
+        :param image:
+        :return:
+        """
         img = mask_bright_areas(cv2.cvtColor(image, cv2.COLOR_RGB2HLS))
         gray_image = grayscale(img)
         blurred = gaussian_blur(gray_image, kernel_size=self._kernel_size)
@@ -186,9 +197,11 @@ class Pipeline:
         left_indices = np.where(tangents < 0)[0]
         right_indices = np.where(tangents > 0)[0]
 
+        # more stable than mean against outliers
         median_left = np.median(tangents[left_indices])
         median_right = np.median(tangents[right_indices])
 
+        # instead of current median slope, take mean over last k frames, smoothes changes
         left_slope, right_slope = self._slope_updater(median_left, median_right)
 
         self._draw_line(image,
@@ -210,6 +223,17 @@ class Pipeline:
                         self._right_point)
 
     def _draw_line(self, image, slope, which, xs, ys, x0, x2, updater):
+        """
+        Extrapolate a line to the end points of region and draw
+        :param image:
+        :param slope:
+        :param which: indicates if the drawing is for right or for left line
+        :param xs: x coordinates of lower points
+        :param ys: y coordinates of lower points
+        :param x0: x coordinate of low end point
+        :param x2: x coordinate of high end point
+        :param updater: updater object for pivot point
+        """
         if not np.isnan(slope):
             x1 = np.median(xs)
             y1 = np.median(ys)
@@ -218,7 +242,7 @@ class Pipeline:
             if not np.isnan(x1):
                 (x_start, y_start), (x_end, y_end) = _extrapolate(x1, y1, slope, x0, x2)
                 setattr(self, which, ((x_start, y_start), (x_end, y_end)))
-            else:  # if nothing was found
+            else:
                 if hasattr(self, which):
                     (x_start, y_start), (x_end, y_end) = getattr(self, which)
                 else:
@@ -227,11 +251,17 @@ class Pipeline:
             if x_start:
                 cv2.line(image, (x_start, y_start), (x_end, y_end), color, self._thickness)
 
-    def slope(self, lines):
-        return super().slope(lines)
-
 
 def _extrapolate(x1, y1, slope, x0, x2):
+    """
+    Extrapolate from pivot point to the ends
+    :param x1:
+    :param y1:
+    :param slope:
+    :param x0:
+    :param x2:
+    :return: tuple containing low and high end points
+    """
     y0 = int(slope * (x0 - x1) + y1)
     y2 = int(slope * (x2 - x1) + y1)
     return (x0, y0), (x2, y2)
