@@ -62,7 +62,7 @@ def convert_if_needed(image):
     return image
 
 
-def mask_bright_areas(image):
+def mask_dark_areas(image):
     # mask for yellow lines
     mask = cv2.inRange(image, np.array([10, 0, 100]), np.array([40, 255, 255]))
     # combine with mask for white lines
@@ -165,7 +165,7 @@ class Pipeline:
         :param image:
         :return:
         """
-        img = mask_bright_areas(cv2.cvtColor(image, cv2.COLOR_RGB2HLS))
+        img = mask_dark_areas(cv2.cvtColor(image, cv2.COLOR_RGB2HLS))
         gray_image = grayscale(img)
         blurred = gaussian_blur(gray_image, kernel_size=self._kernel_size)
         edges_detected = canny(blurred, low_threshold=self._low_threshold, high_threshold=self._high_threshold)
