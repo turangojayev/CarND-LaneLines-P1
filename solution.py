@@ -97,7 +97,7 @@ class MeanWithQueue:
             self._right.append(right)
         return np.mean(self._left), np.mean(self._right)
 
-
+# making it convenient to calculate delta_x and delta_y's for lines
 x1 = itemgetter(0)
 y1 = itemgetter(1)
 x2 = itemgetter(2)

@@ -1,14 +1,12 @@
+import os
 from functools import partial
 
-from moviepy.editor import VideoFileClip
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import numpy as np
 import cv2
-import os
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import numpy as np
 
-from solution import gaussian_blur, canny, adjust_vertices, region_of_interest, hough_lines, weighted_img, \
-    convert_if_needed, mask_dark_areas
+from solution import convert_if_needed
 
 
 def grayscale(img):
@@ -16,7 +14,7 @@ def grayscale(img):
 
 
 def plot(images, columns=2, cmap=None):
-    rows = len(images)  // columns
+    rows = len(images) / columns
     subplot = partial(plt.subplot, rows, columns)
     plt.figure(figsize=(10, 20))
     for i, image in enumerate(images, 1):
@@ -28,23 +26,14 @@ def plot(images, columns=2, cmap=None):
     plt.show()
 
 
-def plot_histogram(images, cmap=None, interval=[0, 256]):
-    rows = len(images)
-    subplot = partial(plt.subplot, rows, 2)
-    plt.figure(figsize=(10, 20))
-    for image, i in zip(images, range(1, 2 * rows, 2)):
-        image = convert_if_needed(image)
-        subplot(i)
-        plt.imshow(image, cmap='gray' if len(image.shape) == 2 else cmap)
-        subplot(i + 1)
-        plt.hist(x=image.flatten(), bins=256, range=interval)
-        # plt.xticks([])
-        # plt.yticks([])
-    plt.show()
-
 colors = ['Red', 'Green', 'Blue']
 
-def plot_histogram_for_line(images, cmap=None, title=None, line_loc_as_float=0.8, directory=None,
+
+def plot_histogram_for_line(images,
+                            cmap=None,
+                            title=None,
+                            line_loc_as_float=0.8,
+                            directory=None,
                             colors=colors):
     rows = len(images)
     if len(images[0].shape) == 2:
@@ -64,7 +53,7 @@ def plot_histogram_for_line(images, cmap=None, title=None, line_loc_as_float=0.8
         plt.xticks([])
         plt.yticks([])
         line_number = int(line_loc_as_float * image.shape[0])
-        plt.axhline(line_number, 0, 400, color='red')
+        plt.axhline(line_number, 0, color='red')
         plt.imshow(image, cmap='gray' if len(image.shape) == 2 else cmap)
         line = image[line_number, :] if columns == 2 else image[line_number, :, :]
 
@@ -109,18 +98,3 @@ if __name__ == '__main__':
     plot_histogram_for_line(images, title="images-histogram")
 
     selected = list(map(lambda image: select_from_rgb(image), images))
-    plot(selected)
-
-    hls = list(map(lambda image: mask_dark_areas(cv2.cvtColor(image, cv2.COLOR_RGB2HLS)), images))
-    plot_histogram_for_line(hls)
-    plot_histogram(hls)
-
-    in_gray_scale = list(map(grayscale, hls))
-    plot_histogram_for_line(in_gray_scale)
-
-    # plot_histogram_on_line(in_gray_scale)
-    # plot_histogram(in_gray_scale)
-
-
-    # in_gray_scale = list(map(lambda image: hls(cv2.cvtColor(image, cv2.COLOR_RGB2HLS)), selected))
-    # plot(in_gray_scale)
