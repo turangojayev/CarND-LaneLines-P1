@@ -9,7 +9,81 @@ import matplotlib.pyplot as plt
 import numpy as np
 from moviepy.editor import VideoFileClip
 
-color = [255, 0, 0]
+
+def plot(images, columns=3, cmap=None, title=None, directory=None, ):
+    rows = len(images) / columns
+    subplot = partial(plt.subplot, rows, columns)
+    plt.figure(figsize=(15, 10))
+    for i, image in enumerate(images, 1):
+        subplot(i)
+        plt.imshow(image, cmap='gray' if len(image.shape) == 2 else cmap)
+        plt.xticks([])
+        plt.yticks([])
+    plt.tight_layout()
+    if title is not None:
+        if directory:
+            title = os.path.join(directory, title)
+        plt.savefig(title)
+    plt.show()
+
+
+colors = ['Red', 'Green', 'Blue']
+
+
+def plot_histogram_for_line(images,
+                            cmap=None,
+                            title=None,
+                            line_loc_as_float=0.8,
+                            directory=None,
+                            colors=colors):
+    rows = len(images)
+    if len(images[0].shape) == 2:
+        columns = len(images[0].shape)
+    else:
+        columns = len(images[0].shape) + 1
+
+    subplot = partial(plt.subplot, rows, columns)
+    plt.figure(figsize=(20, 10))
+
+    for image, i in zip(images, range(1, columns * rows, columns)):
+        image = convert_if_needed(image)
+        subplot(i)
+        plt.xticks([])
+        plt.yticks([])
+        line_number = int(line_loc_as_float * image.shape[0])
+        plt.axhline(line_number, 0, color='red')
+        plt.imshow(image, cmap='gray' if len(image.shape) == 2 else cmap)
+        line = image[line_number, :] if columns == 2 else image[line_number, :, :]
+
+        def plot_subplot(idx):
+            subplot(idx)
+            plt.xticks([])
+            if columns == 2:
+                plt.plot(range(line.shape[0]), line)
+            else:
+                plt.plot(range(line.shape[0]), line[:, idx - i - 1])
+                plt.title(colors[idx - i - 1])
+
+        for channel in range(columns - 1):
+            plot_subplot(i + 1 + channel)
+
+    if title is not None:
+        if directory:
+            title = os.path.join(directory, title)
+        plt.savefig(title)
+    plt.show()
+
+
+def select_from_rgb(image):
+    lower = np.array([160, 160, 10])
+    upper = np.array([255, 255, 255])
+    mask = cv2.inRange(image, lower, upper)
+
+    lower = np.array([200, 200, 200])
+    upper = np.array([255, 255, 255])
+    mask = cv2.bitwise_or(mask, cv2.inRange(image, lower, upper))
+
+    return cv2.bitwise_and(image, image, mask=mask)
 
 
 def grayscale(img):
@@ -97,6 +171,7 @@ class MeanWithQueue:
             self._right.append(right)
         return np.mean(self._left), np.mean(self._right)
 
+
 # making it convenient to calculate delta_x and delta_y's for lines
 x1 = itemgetter(0)
 y1 = itemgetter(1)
@@ -116,14 +191,13 @@ class Pipeline:
                  min_num_of_crossing_sinusoids=25,
                  min_line_len=20,
                  max_line_gap=400,
+                 color=None,
                  thickness=20,
                  slope_updater=None,
                  left_point=None,
                  right_point=None):
         """
         Basic class that implements the pipeline of detecting the lane lines.
-
-        :param update_weight: weight for the new slope in the mean slope update rule over frames
         :param kernel_size: kernel size for Gaussian blur
         :param low_threshold: low intensity threshold for Canny edge detection
         :param high_threshold: high intensity threshold for Canny edge detection
@@ -132,11 +206,13 @@ class Pipeline:
         :param min_num_of_crossing_sinusoids: min number of sine curves required to cross at a point in Hough space
         :param min_line_len: min length required for the line to be considered
         :param max_line_gap: max allowed gap between parts of line for Hough transformation
+        :param color: color of the lines to be drawn
         :param thickness: integer indicating thickness of the line to be drawn
         :param slope_updater: callable that takes two arguments and returns a tuple
         :param left_point: callable that takes two arguments and returns a tuple
         :param right_point: callable that takes two arguments and returns a tuple
         """
+
         self._kernel_size = kernel_size
         self._low_threshold = low_threshold
         self._high_threshold = high_threshold
@@ -145,6 +221,10 @@ class Pipeline:
         self._min_num_of_crossing_lines = min_num_of_crossing_sinusoids
         self._min_line_len = min_line_len
         self._max_line_gap = max_line_gap
+        # just for not putting a mutable object as a keyword parameter default value
+        if color is None:
+            color = [255, 0, 0]
+        self._color = color
         self._thickness = thickness
         self._slope_updater = slope_updater if slope_updater is not None else MeanWithQueue()
         self._left_point = left_point if left_point is not None else MeanWithQueue()
@@ -163,7 +243,7 @@ class Pipeline:
         apply Hough transformation and find lines
         draw lines
         :param image:
-        :return:
+        :return: lane lines plotted on image
         """
         img = mask_dark_areas(cv2.cvtColor(image, cv2.COLOR_RGB2HLS))
         gray_image = grayscale(img)
@@ -201,7 +281,7 @@ class Pipeline:
         median_left = np.median(tangents[left_indices])
         median_right = np.median(tangents[right_indices])
 
-        # instead of current median slope, take mean over last k frames, smoothes changes
+        # instead of current median slope, take mean over last k frames, smoothes the changes
         left_slope, right_slope = self._slope_updater(median_left, median_right)
 
         self._draw_line(image,
@@ -225,8 +305,8 @@ class Pipeline:
     def _draw_line(self, image, slope, which, xs, ys, x0, x2, updater):
         """
         Extrapolate a line to the end points of region and draw
-        :param image:
-        :param slope:
+        :param image: image, on which the line will be drawn
+        :param slope: slope of the line to be drawn
         :param which: indicates if the drawing is for right or for left line
         :param xs: x coordinates of lower points
         :param ys: y coordinates of lower points
@@ -249,7 +329,7 @@ class Pipeline:
                     x_start = None
 
             if x_start:
-                cv2.line(image, (x_start, y_start), (x_end, y_end), color, self._thickness)
+                cv2.line(image, (x_start, y_start), (x_end, y_end), self._color, self._thickness)
 
 
 def _extrapolate(x1, y1, slope, x0, x2):
@@ -307,11 +387,100 @@ def for_images(directory):
                             thickness=10)
         drawn = pipeline(image)
         plt.imshow(drawn)
-        plt.savefig(os.path.join(directory + '_output', filename))
         plt.xticks([])
         plt.yticks([])
+        plt.savefig(os.path.join(directory + '_output', filename))
 
 
 if __name__ == '__main__':
+    writeup_directory = 'writeup_images'
+    test_directory = "test_images"
+    challenge_directory = "challenge_images"
+
+    paths = [os.path.join(test_directory, filename) for filename in os.listdir(test_directory)]
+    images = list(map(mpimg.imread, paths))
+    images = list(map(lambda image: convert_if_needed(image), images))
+    plot(images, title="plot1", directory=writeup_directory)
+    plot_histogram_for_line(images, title='channels_over_line1', directory=writeup_directory)
+
+    selected = list(map(lambda image: select_from_rgb(image), images))
+    plot(selected, title="plot2", directory=writeup_directory)
+
+    paths = [os.path.join(challenge_directory, filename) for filename in os.listdir(challenge_directory)]
+    challenge_images = list(map(mpimg.imread, paths))
+    challenge_images = list(map(lambda image: convert_if_needed(image), challenge_images))
+    plot(challenge_images, title="plot3", directory=writeup_directory)
+    plot_histogram_for_line(challenge_images, title="channels_over_line2", directory=writeup_directory)
+    selected = list(map(lambda image: select_from_rgb(image), challenge_images))
+    plot(selected, title="plot4", directory=writeup_directory)
+    plot_histogram_for_line(selected, title='channels_over_line3', directory=writeup_directory)
+
+    hlsed = list(map(lambda image: cv2.cvtColor(image, cv2.COLOR_RGB2HLS), challenge_images))
+    plot(hlsed, title="plot5", directory=writeup_directory)
+    plot_histogram_for_line(hlsed, colors=['Hue', 'Lightness', 'Saturation'],
+                            title="channels_over_line4", directory=writeup_directory)
+
+    lines_visible = list(map(lambda image: mask_dark_areas(image), hlsed))
+    plot(lines_visible, title="plot6", directory=writeup_directory)
+    plot_histogram_for_line(lines_visible, colors=['Hue', 'Lightness', 'Saturation'], title="channels_over_line5",
+                            directory=writeup_directory)
+
+    gray_images = list(map(grayscale, lines_visible))
+    plot(gray_images, title="plot7", directory=writeup_directory)
+
+    easy_images_in_grayscale = \
+        list(map(lambda image: grayscale(mask_dark_areas(cv2.cvtColor(image, cv2.COLOR_RGB2HLS))), images))
+    plot(easy_images_in_grayscale, title="plot8", directory=writeup_directory)
+
+    easy_images_in_grayscale.extend(gray_images)
+    print(len(easy_images_in_grayscale))
+
+    blurred = list(map(lambda image: gaussian_blur(image, kernel_size=9), easy_images_in_grayscale))
+    plot(blurred, title="plot9", directory=writeup_directory)
+
+    edges_detected = list(map(lambda image: canny(image, 85, 170), blurred))
+    plot(edges_detected, title="plot10", directory=writeup_directory)
+
+    masked_edges = list(map(lambda image: region_of_interest(image, adjust_vertices), edges_detected))
+    plot(masked_edges, title="plot11", directory=writeup_directory)
+
+    lines = list(map(lambda image:
+                     hough_lines(image,
+                                 rho=1,
+                                 theta=np.pi / 180,
+                                 threshold=25,
+                                 min_line_len=30,
+                                 max_line_gap=100), masked_edges))
+
+
+    def draw_lines(img, lines, color=[255, 0, 0], thickness=2):
+        for line in lines:
+            for x1, y1, x2, y2 in line:
+                cv2.line(img, (x1, y1), (x2, y2), color, thickness)
+
+
+    line_images = \
+        list(map(lambda image: np.zeros((image.shape[0], image.shape[1], 3), dtype=np.uint8), masked_edges))
+    for tupl in zip(line_images, lines):
+        draw_lines(tupl[0], tupl[1])
+
+    plot(line_images, title="plot12", directory=writeup_directory)
+
+    images.extend(challenge_images)
+    results = []
+    for image in images:
+        pipeline = Pipeline(kernel_size=9,
+                            low_threshold=85,
+                            high_threshold=170,
+                            rho=1,
+                            theta=np.pi / 180,
+                            min_num_of_crossing_sinusoids=25,
+                            min_line_len=30,
+                            max_line_gap=100,
+                            thickness=10)
+        results.append(pipeline(image))
+    plot(results, title="plot13", directory=writeup_directory)
+
+
     for_images("test_images")
     videos("test_videos")
