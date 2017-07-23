@@ -39,7 +39,7 @@ We had to make use but not limited to
 ### Exploration
 Let's first visualize the images, where we have to detect the lines.
 ![1][image1]
-The images are represented as a set of numbers for different channels on computer. The very commonly used size for each
+The images are represented on computer as a set of numbers for different channels. The very commonly used size for each
 channel is 8 bits and it allows to store 255 intensity values for a channel. In RGB color model, we have 255 levels for 
 each of the red, green and blue channels. A human eye does not detect very small changes in intensities, but 
 higher the difference, easier it is for us to notice. We can see that the yellow and white colors create a contrast with 
@@ -80,7 +80,7 @@ noise and smooth the visualization
 So far, so good. But there is still an open question. How does one actually detect the line? Obviously, 
 we can see it directly in the grayscale images. The intensity of gray color varies over the picture and 
 our eyes are able to spot the differences in intensities. Is there a way to explain it to computer as well?
- Math has answer to lots of questions! Difference of intensity between pixels is what we need and this is 
+ Math has an answer to lots of questions! Difference of intensity between pixels is what we need and this is 
  nothing else but derivative of intensity value with respect to pixels. Starting somewhere in black region 
  in picture and crossing the white lines makes the gradient jump and we can consider it to spot the edges
   where these jumps happen. But instead of implementing it by ourselves, we just use the Canny edge detection 

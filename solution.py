@@ -30,12 +30,12 @@ def plot(images, columns=3, cmap=None, title=None, directory=None, ):
 colors = ['Red', 'Green', 'Blue']
 
 
-def plot_histogram_for_line(images,
-                            cmap=None,
-                            title=None,
-                            line_loc_as_float=0.8,
-                            directory=None,
-                            colors=colors):
+def plot_for_line(images,
+                  cmap=None,
+                  title=None,
+                  line_loc_as_float=0.8,
+                  directory=None,
+                  colors=colors):
     rows = len(images)
     if len(images[0].shape) == 2:
         columns = len(images[0].shape)
@@ -401,7 +401,7 @@ if __name__ == '__main__':
     images = list(map(mpimg.imread, paths))
     images = list(map(lambda image: convert_if_needed(image), images))
     plot(images, title="plot1", directory=writeup_directory)
-    plot_histogram_for_line(images, title='channels_over_line1', directory=writeup_directory)
+    plot_for_line(images, title='channels_over_line1', directory=writeup_directory)
 
     selected = list(map(lambda image: select_from_rgb(image), images))
     plot(selected, title="plot2", directory=writeup_directory)
@@ -410,20 +410,20 @@ if __name__ == '__main__':
     challenge_images = list(map(mpimg.imread, paths))
     challenge_images = list(map(lambda image: convert_if_needed(image), challenge_images))
     plot(challenge_images, title="plot3", directory=writeup_directory)
-    plot_histogram_for_line(challenge_images, title="channels_over_line2", directory=writeup_directory)
+    plot_for_line(challenge_images, title="channels_over_line2", directory=writeup_directory)
     selected = list(map(lambda image: select_from_rgb(image), challenge_images))
     plot(selected, title="plot4", directory=writeup_directory)
-    plot_histogram_for_line(selected, title='channels_over_line3', directory=writeup_directory)
+    plot_for_line(selected, title='channels_over_line3', directory=writeup_directory)
 
     hlsed = list(map(lambda image: cv2.cvtColor(image, cv2.COLOR_RGB2HLS), challenge_images))
     plot(hlsed, title="plot5", directory=writeup_directory)
-    plot_histogram_for_line(hlsed, colors=['Hue', 'Lightness', 'Saturation'],
-                            title="channels_over_line4", directory=writeup_directory)
+    plot_for_line(hlsed, colors=['Hue', 'Lightness', 'Saturation'],
+                  title="channels_over_line4", directory=writeup_directory)
 
     lines_visible = list(map(lambda image: mask_dark_areas(image), hlsed))
     plot(lines_visible, title="plot6", directory=writeup_directory)
-    plot_histogram_for_line(lines_visible, colors=['Hue', 'Lightness', 'Saturation'], title="channels_over_line5",
-                            directory=writeup_directory)
+    plot_for_line(lines_visible, colors=['Hue', 'Lightness', 'Saturation'], title="channels_over_line5",
+                  directory=writeup_directory)
 
     gray_images = list(map(grayscale, lines_visible))
     plot(gray_images, title="plot7", directory=writeup_directory)
