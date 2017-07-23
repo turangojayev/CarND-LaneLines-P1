@@ -91,7 +91,7 @@ our eyes are able to spot the differences in intensities. Is there a way to expl
  As we can see, besides the line edges, we have also discovered some other ones that we don't need. 
  We can easily mask those regions
 ![16][image11]
-###Finding lines
+### Finding lines
  
 Once we have found edges, we can apply [Hough transformation](http://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/hough_lines/hough_lines.html) 
 to find lines. What does it do? It transforms the points in Cartesian coordinate system into a 
