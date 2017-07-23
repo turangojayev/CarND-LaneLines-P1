@@ -50,7 +50,7 @@ Indeed, there are peaks on the intensity plots for channels when the red line on
 Using this, we can mask the intensities that are not interesting to us and plot the resulting images
 ![3][image2]
 Looks impressive, but not so fast! Let's see what happens when the life is not so shiny! For that, load and 
-plot another set of images (screenshots from challenge.mp4 video)
+plot another set of images (screenshots from [challenge.mp4 video](https://github.com/turangojayev/CarND-LaneLines-P1/blob/master/test_videos/challenge.mp4))
 ![4][image3]
 ![5][channel2]
 The road looks quite bright in two of the images and in some parts there is shadow, let's see how it affects our color masking
@@ -137,7 +137,7 @@ higher ends of selected region, correspondingly.
 In general, the implementation solves the problem. Namely, it detects and plots the lines through the whole video
 for all three files correctly. However, one can try to fit a polynomial after getting the ends of the lines from
 Hough transformation. That way, we could plot curves instead of lines. On the other point, for these videos (actually, 
-curvature occurs only in challenge.mp4 file) radius of turns is quite big and therefore, lines might suffice. 
+curvature occurs only in [challenge.mp4 video](https://github.com/turangojayev/CarND-LaneLines-P1/blob/master/test_videos/challenge.mp4) file) radius of turns is quite big and therefore, lines might suffice. 
 
 Defining the ends of region for finding lines and channel intensity selection was done manually by trial and error. 
 One could also come up with a more complicated way to automate it as well.
